@@ -3,4 +3,5 @@ module.exports = {
   LUNCH_TIME_MESSAGE:
     "{host} te chamou para a reunião **{nome_reuniao}** durante seu horário de almoço",
   IDLE_MESSAGE: "{host} te chamou para a reunião **{nome_reuniao}**",
+  UNAMED_MEET: "Sem tema",
 };

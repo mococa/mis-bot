@@ -2,14 +2,16 @@ const {
   LUNCH_CHANNEL,
   LUNCH_TIME_MESSAGE,
   IDLE_MESSAGE,
+  UNAMED_MEET,
 } = require("../constants");
-const Meet = require("../controllers/meet");
+const sendInviteDM = require("../functions/sendInvite");
+const MeetModel = require("../models/Meet");
 
 async function meet(client, message, args) {
   try {
     //todo: s+meet :nome-da-reuniao: [...@mention] -> cria uma reuniao com esse nome e taca @mention nela
     //todo: s+meet stop :nome-da-reuniao: -> para uma reuniao com esse nome
-    const history = Meet.getAll();
+    const history = await MeetModel.find();
     const meeting_name = args.slice(
       0,
       args.findIndex((arg) => arg.startsWith("<@"))
@@ -17,15 +19,14 @@ async function meet(client, message, args) {
     const members = args
       .slice(meeting_name.length)
       .map((member) => member.slice(3, member.length - 1));
-    let category_name = meeting_name.join(" ") || "Sem tema";
+    let category_name = meeting_name.join(" ") || UNAMED_MEET;
+    const meetNameOccurences =
+      history
+        .map((m) => m.name)
+        .filter((name) => name.startsWith(category_name)).length + 1;
 
-    if (category_name.startsWith("Sem tema")) {
-      category_name +=
-        history.filter((meet) => meet.name.startsWith("Sem tema")).length > 1
-          ? +" " +
-            history.filter((meet) => meet.name.startsWith("Sem tema")).length +
-            1
-          : "";
+    if (category_name.startsWith(UNAMED_MEET)) {
+      category_name += meetNameOccurences > 1 ? " " + meetNameOccurences : "";
     } else if (history.find((meet) => meet.name === category_name)) {
       category_name += Math.floor(Math.random() * 20);
     }
@@ -49,14 +50,8 @@ async function meet(client, message, args) {
     const meeting_media = await message.guild.channels.create("Mídia", {
       parent: category,
     });
-    const sendInviteDM = async (member, msg) => {
-      if (member.user.bot) return;
-      const { code } = await meeting_voice.createInvite();
-      await member.send(msg);
-      return member.send(`https://discord.gg/${code}`);
-    };
-    await new Promise.all(
-      parsedMembers.forEach(async (parsedMember) => {
+    await Promise.all(
+      parsedMembers.map(async (parsedMember) => {
         if (parsedMember.user.bot) return;
         const rest_of_members = parsedMembers.filter(
           (m) => m.id !== parsedMember.id
@@ -70,7 +65,7 @@ async function meet(client, message, args) {
             message.member.nickname || message.member.user.username
           ).replace("{nome_reuniao}", category_name);
           const msg = members_msg.length ? msg1 + " com " + members_msg : msg1;
-          sendInviteDM(parsedMember, msg);
+          sendInviteDM(parsedMember, msg, meeting_voice);
         }
         if (
           parsedMember.voice &&
@@ -81,28 +76,23 @@ async function meet(client, message, args) {
             message.member.nickname || message.member.user.username
           ).replace("{nome_reuniao}", category_name);
           const msg = members_msg.length ? msg1 + " com " + members_msg : msg1;
-          sendInviteDM(parsedMember, msg);
+          sendInviteDM(parsedMember, msg, meeting_voice);
           return;
         }
-        if (parsedMember.voice.channelId)
-          parsedMember.voice.setChannel(meeting_voice);
+        //if (parsedMember.voice.channelId)
+        //parsedMember.voice.setChannel(meeting_voice);
       })
     );
-    if (message.member.voice.channelId)
-      message.member.voice.setChannel(meeting_voice);
+    //if (message.member.voice.channelId)
+    //message.member.voice.setChannel(meeting_voice);
 
-    const meetNameOccurences =
-      Meet.getAll()
-        .map((m) => m.name)
-        .filter((name) => name.startsWith(category_name)).length + 1;
-
-    Meet.add({
-      id: category.id,
-      channels: [meeting_voice, meeting_media, category],
-      name: category_name + (meetNameOccurences > 1 ? meetNameOccurences : ""),
+    MeetModel.create({
+      channels: [meeting_voice, meeting_media, category].map((chann) => ({
+        id: chann.id,
+      })),
+      name: category_name,
+      owner: message.author.id,
     });
-
-    console.log({ history: Meet.getAll() });
   } catch (err) {
     console.error(err);
   }
