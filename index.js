@@ -5,8 +5,11 @@ const express_config = require("./config/express");
 const MisBot = require("./controllers/discord");
 const botConfig = require("./config/discord");
 const set_discord_events = require("./events/discord");
+const schedules = require("./config/schedules");
 const app = express();
 express_config(app);
+
+schedules();
 
 connectLoop();
 
