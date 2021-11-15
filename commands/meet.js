@@ -11,7 +11,7 @@ async function meet(client, message, args) {
   try {
     //todo: s+meet :nome-da-reuniao: [...@mention] -> cria uma reuniao com esse nome e taca @mention nela
     //todo: s+meet stop :nome-da-reuniao: -> para uma reuniao com esse nome
-    const history = await MeetModel.find();
+    const history = await MeetModel.find({active: true});
     const meeting_name = args.slice(
       0,
       args.findIndex((arg) => arg.startsWith("<@"))
@@ -39,7 +39,12 @@ async function meet(client, message, args) {
         return ___member;
       })
       .filter((el) => el);
-
+    const previousChannels = [
+      {
+        id: message.author.id,
+        channel: message.member.voice.channelId || "",
+      },
+    ];
     const category = await message.guild.channels.create(category_name, {
       type: "GUILD_CATEGORY",
     });
@@ -79,12 +84,18 @@ async function meet(client, message, args) {
           sendInviteDM(parsedMember, msg, meeting_voice);
           return;
         }
-        //if (parsedMember.voice.channelId)
-        //parsedMember.voice.setChannel(meeting_voice);
+        if (parsedMember.voice.channelId) {
+          previousChannels.push({
+            id: parsedMember.id,
+            channel: parsedMember.voice.channelId,
+          });
+          parsedMember.voice.setChannel(meeting_voice);
+        }
       })
     );
-    //if (message.member.voice.channelId)
-    //message.member.voice.setChannel(meeting_voice);
+    if (message.member.voice.channelId) {
+      message.member.voice.setChannel(meeting_voice);
+    }
 
     MeetModel.create({
       channels: [meeting_voice, meeting_media, category].map((chann) => ({
@@ -92,6 +103,7 @@ async function meet(client, message, args) {
       })),
       name: category_name,
       owner: message.author.id,
+      members: previousChannels,
     });
   } catch (err) {
     console.error(err);
