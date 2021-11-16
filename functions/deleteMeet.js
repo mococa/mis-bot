@@ -2,6 +2,10 @@ const { FALLBACK_CHANNEL } = require("../constants");
 const MisBot = require("../controllers/discord");
 const MeetModel = require("../models/Meet");
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 const deleteMeet = async (meet) => {
   if (!meet) return;
   //* Movendo usuários de volta para onde estavam
@@ -30,7 +34,8 @@ const deleteMeet = async (meet) => {
           }
           await member.voice.setChannel(FALLBACK_CHANNEL);
         } catch (e) {
-          if (member) await member.voice.setChannel(FALLBACK_CHANNEL);
+          if (member && member.voice)
+            await member.voice.setChannel(FALLBACK_CHANNEL);
           rej(e);
           console.error(e);
         }
@@ -45,10 +50,9 @@ const deleteMeet = async (meet) => {
           channel.id
         );
         await MeetModel.updateOne({ _id: meet._id }, { active: false });
-        if (fetchedChannel)
-          setTimeout(async () => {
-            fetchedChannel.delete().then(res).catch(rej);
-          }, 150);
+        if (fetchedChannel) await fetchedChannel.delete().catch(rej);
+        await sleep(300);
+        res(true);
       });
     })
   );

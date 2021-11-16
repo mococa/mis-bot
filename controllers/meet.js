@@ -2,9 +2,18 @@ const MisBot = require("./discord");
 
 class Meet {
   meets = null;
-  static add(meet) {
-    if (!this.meets) this.meets = [];
-    this.meets.push(meet);
+  static async add(name) {
+    const category = await MisBot.getGuild().channels.create(name, {
+      type: "GUILD_CATEGORY",
+    });
+    const meeting_voice = await MisBot.getGuild().channels.create("Reunião", {
+      type: "GUILD_VOICE",
+      parent: category,
+    });
+    const meeting_media = await MisBot.getGuild().channels.create("Mídia", {
+      parent: category,
+    });
+    return { category, meeting_voice, meeting_media };
   }
   static get(id) {
     if (!this.meets) this.meets = [];
